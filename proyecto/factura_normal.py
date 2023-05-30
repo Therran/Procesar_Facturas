@@ -12,15 +12,16 @@ def normal_insert():
         f'mysql+mysqlconnector://{"ru_usuario"}:{"tu_contraseña"}@{"tu_host"}:{tu_puerto}/{"tu_BBDD"}',
         poolclass=NullPool)
 
-    ## Open, Read amd Modify XML
-    df_idDoc = pd.read_xml(factura, xpath='//IdDoc', encoding='ISO-8859-1')
-    df_Emisor = pd.read_xml(factura, xpath='//Emisor', encoding='ISO-8859-1')
-    df_Receptor = pd.read_xml(factura, xpath='//Receptor', encoding='ISO-8859-1')
-    df_Totales = pd.read_xml(factura, xpath='//Totales', encoding='ISO-8859-1')
-    df_Encabezado = pd.concat([df_idDoc, df_Emisor, df_Receptor, df_Totales], axis=1)
-    df_Encabezado
-    print('Detalle Encabezado')
-    print(df_Encabezado)
+     ## Open, Read amd Modify XML
+     tree = ET.parse(factura)
+     root = tree.getroot()
+     df = pd.read_xml(ET.tostring(root.find('{http://www.sii.cl/SiiDte}Documento/')), encoding="ISO-8859-1")
+     df.fillna(method='ffill', axis=0, inplace=True)
+     n = df.shape[0]
+     x = int(n - 1)
+     df_idem = df.iloc[[x]]
+     print('Detalle Encabezado')
+     print(df_idem)
 
     ## Insert to Header Table
     df_Encabezado.to_sql('tu_tabla', con=mydbFacturas, if_exists='append', index=False)
