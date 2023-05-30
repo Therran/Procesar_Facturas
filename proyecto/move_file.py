@@ -14,3 +14,5 @@ def moveToPath():
     ruta_nuevo_archivo = os.path.join(ruta_destino, nuevo_nombre)
 
     os.rename(ruta_archivo_aleatorio, ruta_nuevo_archivo)
+
+moveToPath()
