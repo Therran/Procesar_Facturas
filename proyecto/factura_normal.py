@@ -1,52 +1,40 @@
-import xml.etree.ElementTree as ET
 import pandas as pd
 import os
 from sqlalchemy import create_engine
 from sqlalchemy.pool import NullPool
 
-
-def insert_normal():
+def normal_insert():
     ruta_destino = 'data/'
     factura = str('data/data.xml')
 
     ##Connect to Mysql
     mydbFacturas = create_engine(
-        f'mysql+mysqlconnector://{"tu_usuario"}:{"tu_contraseña"}@{"tu_host"}:{tu_puerto}/{"tu_BBDD"}',
+        f'mysql+mysqlconnector://{"ru_usuario"}:{"tu_contraseña"}@{"tu_host"}:{tu_puerto}/{"tu_BBDD"}',
         poolclass=NullPool)
 
     ## Open, Read amd Modify XML
-    tree = ET.parse(factura)
-    root = tree.getroot()
-    df = pd.read_xml(ET.tostring(root.find('Documento/')), encoding="ISO-8859-1")
-    df.fillna(method='ffill', axis=0, inplace=True)
-    n = df.shape[0]
-    x = int(n - 1)
-    df.fillna(method='ffill', axis=0, inplace=True)
-    df_idem = df.iloc[[x]]
-    print('Detalle Encabezado Normal')
-    print(df_idem)
+    df_idDoc = pd.read_xml(factura, xpath='//IdDoc', encoding='ISO-8859-1')
+    df_Emisor = pd.read_xml(factura, xpath='//Emisor', encoding='ISO-8859-1')
+    df_Receptor = pd.read_xml(factura, xpath='//Receptor', encoding='ISO-8859-1')
+    df_Totales = pd.read_xml(factura, xpath='//Totales', encoding='ISO-8859-1')
+    df_Encabezado = pd.concat([df_idDoc, df_Emisor, df_Receptor, df_Totales], axis=1)
+    df_Encabezado
+    print('Detalle Encabezado')
+    print(df_Encabezado)
 
     ## Insert to Header Table
-    df_idem.to_sql('tu_tabla', con=mydbFacturas, if_exists='append', index=False)
+    df_Encabezado.to_sql('tu_tabla', con=mydbFacturas, if_exists='append', index=False)
     mydbFacturas.dispose()
 
     ## Open, Read amd Modify XML "Cargos"
-    folio = df['Folio'].astype(int)
-    detalles = root.findall('.//Detalle')
-    df_detalleCargo = pd.DataFrame()
-
-    for detalle in detalles:
-        data = {}
-        for child in detalle:
-            tag = ET.QName(child.tag).text
-            data[tag] = child.text
-        df_detalleCargo = pd.concat([df_detalleCargo, pd.DataFrame(data, index=[0])])
+    df_detalleCargo = pd.read_xml('facturas/data.xml', xpath='//Detalle', encoding='ISO-8859-1')
+    folio = df_idDoc['Folio']
     df_detalleCargo['Folio'] = folio[0]
-    print('Detalle Cargos Normal')
+    print('Detalle Cargos')
     print(df_detalleCargo)
 
     ## Insert to Cargos Table
-    df_detalleCargo.to_sql('tu_tabla2', con=mydbFacturas, if_exists='append', index=False)
+    df_detalleCargo.to_sql('cargos', con=mydbFacturas, if_exists='append', index=False)
     mydbFacturas.dispose()
 
     ##Erase Temporal File
@@ -54,5 +42,3 @@ def insert_normal():
     for archivo in archivos:
         ruta_archivo = os.path.join(ruta_destino, archivo)
         os.remove(ruta_archivo)
-
-insert_normal()
